@@ -1,0 +1,100 @@
+本 Codelab 将会使用 Google 提供的 Quick Draw Dataset 数据集进行训练，该数据集由 Quick Draw 游戏的玩家提供，现在 Google 将其开源。
+
+  本 Codelab 将利用该数据集的简化版训练 10 种手绘图，每种类型的手绘图有 3200 张，每张图的分辨率为 28*28。
+
+  进入 Jupyter 界面，新建名为 Codelab 的目录，并在该目录下新建名为 data 的目录，复制 Tools/datasets 目录下的内容到该目录下。
+
+  手绘图的简化版数据集为一个个 .npy 文件，其文件格式如下:
+
+[ 
+  [  // 第一张图
+    [0, 251, 230, 0, ...]
+  ],
+  [  // 第二张图
+    [0, 0, 68, 102, ...]
+  ],
+  ...
+]
+  在 Codelab 目录下新建名为 training 的 Python3 文件，按照惯例，先声明项目的依赖。训练程序使用 glob 库读取文件，并使用 tf-keras 建立模型。
+
+import os
+import glob
+import numpy as np
+from tensorflow.keras import layers
+from tensorflow import keras 
+import tensorflow as tf
+  根据数据集的格式，编写载入数据集的函数。该函数会根据传入的参数 max_items_per_class 确定载入的每种数据集图片数量，并将其随机分类成训练集和测试集。函数返回 5 个变量，分别是训练图像数据、训练标签、测试图像数据、测试标签、所有标签名。
+
+def load_data(root, vfold_ratio=0.2, max_items_per_class= 4000 ):
+    all_files = glob.glob(os.path.join(root, '*.npy'))
+
+    #initialize variables 
+    x = np.empty([0, 784])
+    y = np.empty([0])
+    class_names = []
+
+    #load each data file 
+    for idx, file in enumerate(all_files):
+        data = np.load(file)
+        data = data[0: max_items_per_class, :]
+        labels = np.full(data.shape[0], idx)
+
+        x = np.concatenate((x, data), axis=0)
+        y = np.append(y, labels)
+
+        class_name, ext = os.path.splitext(os.path.basename(file))
+        class_names.append(class_name)
+
+    data = None
+    labels = None
+
+    #randomize the dataset 
+    permutation = np.random.permutation(y.shape[0])
+    x = x[permutation, :]
+    y = y[permutation]
+
+    #separate into training and testing 
+    vfold_size = int(x.shape[0]/100*(vfold_ratio*100))
+
+    x_test = x[0:vfold_size, :]
+    y_test = y[0:vfold_size]
+
+    x_train = x[vfold_size:x.shape[0], :]
+    y_train = y[vfold_size:y.shape[0]]
+    return x_train, y_train, x_test, y_test, class_names
+  调用上述的函数，获取数据集和测试集，同时定义图像参数。
+
+x_train, y_train, x_test, y_test, class_names = load_data('data')
+num_classes = len(class_names)
+image_size = 28
+  输出数据集数量，初步判断是否成功载入数据集。
+
+print(len(x_train))
+  执行程序，查看输出。
+
+
+
+  在训练集中随机选择一张图片，测试输出图片和标签。
+
+import matplotlib.pyplot as plt
+from random import randint
+%matplotlib inline  
+idx = randint(0, len(x_train))
+plt.imshow(x_train[idx].reshape(28,28)) 
+print(class_names[int(y_train[idx].item())])
+  执行程序，查看输出。图中紫色的部分的实际值像素值是 0，其余部分则为有值的部分。
+
+
+
+  继续处理数据集，把所有的图像数据集的像素值都除以一个 std 值，这个值通常是 255。同时使用 keras 的 one hot 方式将标签数组与所有标签对应，形成标签矩阵。
+  
+  # Reshape and normalize
+x_train = x_train.reshape(x_train.shape[0], image_size, image_size, 1).astype('float32')
+x_test = x_test.reshape(x_test.shape[0], image_size, image_size, 1).astype('float32')
+
+x_train /= 255.0
+x_test /= 255.0
+
+# Convert class vectors to class matrices
+y_train = keras.utils.to_categorical(y_train, num_classes)
+y_test = keras.utils.to_categorical(y_test, num_classes)

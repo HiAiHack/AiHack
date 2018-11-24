@@ -1,0 +1,12 @@
+什么是车标识别？
+  在学习 TensorFlow 的过程中我们在开源社区中找到了一个名为 MobileNet 的模型，该模型能对图像进行分类。Google 发布的 tensorflow-for-poets 的训练 API 中正好支持这个模型，我们希望能结合 TensorFlow 与 MobileNet，将其应用于儿童的车标认知教育当中。
+
+我们要创造什么？
+  在这个 Codelab 中，你将要使用 5 种车标图像训练一个 TensorFlow 模型。你将学会以下技能：
+
+使用机器学习七步走的方式完成图像分类任务
+训练实现 MobileNet 的 TensorFlow 模型
+你将需要什么？
+GOOGLE AI Cloud 
+
+

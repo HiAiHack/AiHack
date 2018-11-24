@@ -1,0 +1,273 @@
+Android Quick Draw
+
+准备开始开发 Android 程序，可以联系管理员获取骨架程序。本 Codelab 基于 Android OpenCV 进行开发，如果想了解 Android OpenCV 的相关开发方法，可以先尝试 Android OpenCV Codelab。
+
+  下方即为最终的界面布局，直接从布局上观察，与骨架程序对比，最终界面中多出了 1 个 Button 和 1 个 TextView 布局，并且屏蔽了摄像头返回的视频流。
+
+
+
+  先从 Android 布局开始，双击左侧栏 app/res/layout/activity_main.xml 编辑布局，点击下方的 Text 进入 XML 布局方式。
+
+  复制下面的布局程序覆盖原文件。
+
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/outerLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <org.opencv.android.JavaCameraView
+        android:id="@+id/HelloOpenCvView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <Button
+        android:id="@+id/clearButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:text="擦除绘画" />
+
+    <TextView
+        android:id="@+id/displayResult"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:gravity="center"
+        android:text="欢迎来到快速涂鸦"
+        android:textColor="#FF0000"
+        android:textSize="24sp" />
+</RelativeLayout>
+  双击左侧栏的 app/java/包名/activity/MainActivity 开始设计逻辑程序。根据手指划过的轨迹，划出相应的笔画，并且在提指时猜测绘制的图案是什么。
+
+  手机屏幕上显示的内容和该方法的返回值有关，如果要指定的内容，只要更改返回值即可。但需要注意，返回值中 Mat 的 shape 需要和相机返回帧的 shape 分辨率相同。例如相机返回帧的分辨率为 640*480 那么，该方法返回的 Mat 的分辨率也应该为 640*480。屏蔽摄像头返回的帧，先将 onCameraFrame 方法清空。
+
+@Override
+public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
+    return inputFrame.rgba();
+}
+  清空现有的全局 Mat 变量，重新定义所要使用到的 Mat 变量。
+
+private Mat tmpMat;
+private Mat zeroMat;
+private Mat currentMat;
+private Mat kernel;
+  同样清空 onCameraViewStarted 方法，对新定义的变量进行初始化。
+
+@Override
+public void onCameraViewStarted(int width, int height) {
+    tmpMat = new Mat();
+    zeroMat = new Mat(new Size(width, height), CvType.CV_8U, new Scalar(0));
+    currentMat = new Mat(new Size(width, height), CvType.CV_8U, new Scalar(0));
+    kernel = Imgproc.getStructuringElement(MORPH_RECT, new Size(2, 2));
+}
+  修改 onCameraFrame 方法，使得每次返回 currentMat，并在此基础上绘制一个 maxHeight*maxHeight 的矩形框作为规定的绘画区域。
+
+@Override
+public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
+    currentMat.copyTo(tmpMat);
+    Core.rectangle(tmpMat, new Point(MAXWIDTH / 2 - MAXHEIGHT / 2, 0), new Point(MAXWIDTH / 2 + MAXHEIGHT / 2, MAXHEIGHT), new Scalar(255), 3);
+    return tmpMat;
+}
+  将程序烧写到手机当中，即可看到屏幕中除了静态组件和白色绘画框之外其余部分都是黑色，并且成功将摄像头帧屏蔽。
+
+
+
+  可绘制的区域分辨率为 maxHeight*maxHeight，而整个摄像头组件的宽度占满了手机屏幕，因此需要设置绘画区域。切换到布局界面，在 JavaCameraView 的上方添加 RelativeLayout 作为绘制区域。
+
+<!-- 添加 ↓ -->
+<RelativeLayout
+    android:id="@+id/maskLayout"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_centerInParent="true" />
+<!-- 添加 ↑ -->
+
+<org.opencv.android.JavaCameraView
+        android:id="@+id/HelloOpenCvView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+  在 MainActivity 逻辑程序中初始化要使用到的组件，在 onCameraViewStarted 方法中根据手机屏幕的大小定义组件的长宽。
+
+public class MainActivity extends Activity implements CameraBridgeViewBase.CvCameraViewListener2 {
+    /*
+    * Debug
+    */
+    private TextView displayResult;
+    // 复制下面的程序
+    private RelativeLayout maskLayout;
+
+    private void initDebug() {
+        displayResult = findViewById(R.id.displayResult);
+        // 复制下面的程序
+        maskLayout = findViewById(R.id.maskLayout);
+    }
+
+    // ...
+
+    @Override
+    public void onCameraViewStarted(int width, int height) {
+        tmpMat = new Mat();
+        zeroMat = new Mat(new Size(width, height), CvType.CV_8U, new Scalar(0));
+        currentMat = new Mat(new Size(width, height), CvType.CV_8U, new Scalar(0));
+        kernel = Imgproc.getStructuringElement(MORPH_RECT, new Size(2, 2));
+
+        // 复制下面的程序
+        initModel();
+
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        int trueH = dm.heightPixels;
+
+        maskLayout.setMinimumHeight(trueH);
+        maskLayout.setMinimumWidth(trueH);
+    }
+}
+  设置绘制区域的监听方法，当手指划过时绘制点。
+
+@Override
+public void onCameraViewStarted(int width, int height) {
+    // ...
+
+    maskLayout.setMinimumHeight(trueH);
+    maskLayout.setMinimumWidth(trueH);
+
+    // 复制下面的程序
+    maskLayout.setOnTouchListener((v, event) -> {
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_UP:
+                break;
+            case MotionEvent.ACTION_DOWN:
+            case MotionEvent.ACTION_MOVE:
+                float tX = event.getX() / trueH * 640;
+                float tY = event.getY() / trueH * 480;
+                if (tX < MAXWIDTH / 2 - MAXHEIGHT / 2 || tX > MAXWIDTH / 2 + MAXHEIGHT / 2) {
+                    return true;
+                }
+                Core.line(currentMat, new Point(tX, tY), new Point(tX, tY), new Scalar(255), 12);
+                break;
+        }
+        return true;
+    });
+}
+  将程序烧写到手机中，即可根据手指路径绘制笔画。
+
+
+
+  最后，调用 Android TensorFlow 执行预测。设置并初始化 Android TensorFlow，如果不了解如何在 Android 端调用 TensorFlow，可以先尝试 Android TensorFlow Codelab。
+
+  从 AI Cloud 中将前面步骤中训练完成后生成的 retrained_graph.tflite 和 class_names.txt 文件复制到 Android 项目的 app/src/main/assets 目录下并对应更名为 retrained_graph.tflite 和 retrained_labels.txt。
+
+  回到 Android Studio 界面，编辑 retrained_labels.txt 文件，将其中的英文替换成中文，注意该文件最后需要保留一个空行。
+
+太阳
+阶梯
+云
+花
+自行车
+麦克风
+三角形
+T恤衫
+苹果
+门
+  双击左侧栏 app/java/包名/setting/TensorFlowSetting 进入编辑，根据模型的输入定义，修改类的构造方法。
+
+public class TensorFlowSetting {
+    public static final int DIM_BATCH_SIZE = 1;
+    // 修改 ↓
+    public static final int DIM_PIXEL_SIZE = 1;
+    public static final int DIM_IMG_SIZE_X = 28;
+    public static final int DIM_IMG_SIZE_Y = 28;
+    public static final int IMAGE_MEAN = 0;
+    public static final float IMAGE_STD = 255.0f;
+    public static final int RESULTS_TO_SHOW = 5;
+    // 修改 ↑
+    public static final float THRESHOLD = 0.1f;
+    public static final String MODELFILE = "converted_model.tflite";
+    public static final String LABEL_PATH = "retrained_labels.txt";
+}
+  同样根据模型的输入定义修改 TensorFlowLiteDetector 类中 convertBitmapToByteBuffer 方法中转换 Mat 的部分。
+
+// 格式化传入图像像素值
+private void convertBitmapToByteBuffer(Bitmap bitmap) {
+    if (imgData == null) {
+        return;
+    }
+    imgData.rewind();
+    bitmap.getPixels(intValues, 0, bitmap.getWidth(),
+            0, 0, bitmap.getWidth(), bitmap.getHeight());
+
+    // 替换 ↓
+    for (final int val : intValues) {
+        imgData.putFloat(((val & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
+    }
+    // 替换 ↑
+}
+  双击左侧栏 app/java/包名/activity/MainActivity 进入编辑，修改 onCameraViewStarted 方法，监听手指抬起事件，当手指抬起时启动 TensorFlow 识别。模型需要输入 28*28 像素的图像，因此需要将绘制的图像重置成 28*28 像素。
+
+@Override
+public void onCameraViewStarted(int width, int height) {
+    // ...
+    maskLayout.setMinimumHeight(trueH);
+    maskLayout.setMinimumWidth(trueH);
+
+    maskLayout.setOnTouchListener((v, event) -> {
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_UP:
+                // 复制下面的程序
+                Mat centerMat = currentMat.submat(new Rect(new Point(MAXWIDTH / 2 - MAXHEIGHT / 2, 0), new Point(MAXWIDTH / 2 + MAXHEIGHT / 2, MAXHEIGHT)));
+                Imgproc.resize(centerMat, centerMat, new Size(DIM_IMG_SIZE_X, DIM_IMG_SIZE_Y));
+
+                Imgproc.dilate(centerMat, centerMat, kernel);
+
+                if (detector != null) {
+                    List<TensorFlowLiteDetector.Recognition> results = detector.detectImage(centerMat);
+
+                    Message message = new Message();
+                    Bundle bundle = new Bundle();
+                    bundle.putString("Result", String.valueOf(results));
+                    message.setData(bundle);
+                    Log.e(TAG, String.valueOf(results));
+                    displayHandler.sendMessage(message);
+                }
+                break;
+            case MotionEvent.ACTION_DOWN:
+            case MotionEvent.ACTION_MOVE:
+                //...
+        }
+        return true;
+    });
+
+    findViewById(R.id.clearButton).setOnClickListener(v -> {
+        zeroMat.copyTo(currentMat);
+
+        Message message = new Message();
+        Bundle bundle = new Bundle();
+        bundle.putString("Result", String.valueOf(""));
+        message.setData(bundle);
+        Log.e(TAG, String.valueOf(""));
+        displayHandler.sendMessage(message);
+    });
+}
+  最后，设置清空按钮监听事件，当点击按钮时，清空屏幕和下方的解释。
+
+@Override
+public void onCameraViewStarted(int width, int height) {
+    // ...
+
+    maskLayout.setOnTouchListener((v, event) -> {
+        // ...
+    }
+
+    // 复制下面的程序
+    findViewById(R.id.clearButton).setOnClickListener(v -> {
+        zeroMat.copyTo(currentMat);
+
+        Message message = new Message();
+        Bundle bundle = new Bundle();
+        bundle.putString("Result", String.valueOf(""));
+        message.setData(bundle);
+        Log.e(TAG, String.valueOf(""));
+        handler.sendMessage(message);
+    });
+}
+  将程序烧写到手机当中，在屏幕上绘制图案，即可在下方看到 AI 识别的结果。

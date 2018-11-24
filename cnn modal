@@ -1,0 +1,51 @@
+训练 CNN 模型
+
+使用 tf-keras 定义 CNN 模型。在使用该方法定义模型时是只需要调用对应 API 填入模型各层的参数即可，keras 会自动生成训练模型层。该模型的核心为 3 层卷积池化组合，1 层展平和 2 层全连接。
+
+# Define model
+model = keras.Sequential()
+model.add(layers.Convolution2D(16, (3, 3),
+                        padding='same',
+                        input_shape=x_train.shape[1:], activation='relu'))
+model.add(layers.MaxPooling2D(pool_size=(2, 2)))
+model.add(layers.Convolution2D(32, (3, 3), padding='same', activation= 'relu'))
+model.add(layers.MaxPooling2D(pool_size=(2, 2)))
+model.add(layers.Convolution2D(64, (3, 3), padding='same', activation= 'relu'))
+model.add(layers.MaxPooling2D(pool_size =(2,2)))
+model.add(layers.Flatten())
+model.add(layers.Dense(128, activation='relu'))
+model.add(layers.Dense(10, activation='softmax'))
+  定义优化器并初始化 tf-keras 模型，设置损失函数为 “多分类的对数损失函数”，性能评估函数为计算 top-k 正确率，即当预测值的前k个值中存在目标类别即认为预测正确。
+
+# Train model
+adam = tf.train.AdamOptimizer()
+model.compile(loss='categorical_crossentropy',
+              optimizer=adam,
+              metrics=['top_k_categorical_accuracy'])
+print(model.summary())
+  执行程序，可以看到输出的模型结构以及返回值的结构。
+
+
+
+  调用 tf-keras 的训练方法，设置验证比例为 10%，每次训练 256 张图片，输出模式为每个 epoch 输出一行记录，训练 100 轮（每轮会训练完整的数据集）。
+
+model.fit(x = x_train, y = y_train, validation_split=0.1, batch_size = 256, verbose=2, epochs=100)
+  执行程序，可以看到训练的输出结果。
+
+
+
+  为了更加直观的查看训练的结果，随机取验证集中的图片进行预测。
+
+import matplotlib.pyplot as plt
+from random import randint
+%matplotlib inline  
+idx = randint(0, len(x_test))
+img = x_test[idx]
+plt.imshow(img.squeeze()) 
+pred = model.predict(np.expand_dims(img, axis=0))[0]
+ind = (-pred).argsort()[:5]
+latex = [class_names[x] for x in ind]
+print(latex)
+  执行程序，查看预测的结果。
+
+

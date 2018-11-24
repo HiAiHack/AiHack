@@ -1,0 +1,19 @@
+进入 Codelab 目录，参照下面的做法执行训练，程序会自动下载模型文件并进行训练。该模型训练时实际需要传入三种数据集，一种是训练集，一种是测试集，一种是验证集，但训练程序已经内置了分类的功能，程序会自动把整个目录中的图片按照一定的比例随机分成上述三种数据集进行训练。
+
+bottleneck_dir 表示训练集转换后的文件存放的目录
+how_many_training_steps 表示总训练的步数
+model_dir 表示模型文件存放的目录，如果目录下不存在模型则会自动下载
+summaries_dir 表示训练的中间结果存放的目录
+output_graph 和 output_labels 表示训练结果输出的目录
+architecture 就是我们前面设置的训练参数；image_dir表示数据集存放的目录。
+    python3 -m scripts.retrain \
+    --bottleneck_dir=tmp/bottlenecks \
+    --how_many_training_steps=5000 \
+    --model_dir=model \
+    --summaries_dir=tmp/training_summaries/"${ARCHITECTURE}" \
+    --output_graph=output/retrained_graph.pb \
+    --output_labels=output/retrained_labels.txt \
+    --architecture="${ARCHITECTURE}" \
+    --image_dir=data \
+    --learning_rate=0.00000001
+  训练结束后，如果在 output 目录下生成 retrained_graph.pb 文件和 retrained_labels.txt 文件，就可以进入下一步了。

@@ -1,0 +1,58 @@
+迁移模型
+  成功在开发环境下将模型训练完毕后，接下去要做的事情就是将其移植到生产环境（Android App）。
+
+  为了使用方便，在导出模型之前，先把标签数组导出成 txt 文件。
+
+with open('class_names.txt', 'w') as file_handler:
+    for item in class_names:
+        file_handler.write("{}\n".format(item))
+  调用 tf-keras 提供的模型导出方法，将模型导出。
+
+model.save(filepath='sketcher.h5',include_optimizer=False)
+  完整地执行一遍程序，等待训练结束后，会在 Codelab 目录下生成名为 class_names.txt 的标签集文件和 sketcher.h5 的模型文件。
+
+
+
+  Google 面向 Android 的开发者提供了 2 种 TensorFlow 的调用方式，一种是 TensorFlow Mobile，另一种是 TensorFlow Lite。前者需要调用 PB 格式的静态模型文件进行预测，而后者需要调用 TFLite 格式的静态模型文件。
+
+  在前面的步骤中，本 Codelab 使用的是 tf-keras 模型，导出的为 h5 类型的静态模型文件，因此需要对模型文件进行一次转换，即将 h5 类型的模型文件转换成 PB 或者 TFLite 格式的文件。
+
+  Keras 本体库中提供了一种方法，可以获取到当前执行的 TensorFlow Session，以此为桥梁，可以 PB 的格式冻结并导出 TensorFlow 模型。开源社区 Github 中的作者 amir-abdi 基于此开发出了一个转换工具。
+
+  切换到 Jupyter 项目树界面，复制 Tools/keras_to_tensorflow.py 文件到 Codelab 目录下。
+
+
+
+  以下为作者提供的转换工具的传入参数，在默认情况下不需要手动定义。
+
+num_output: 此值与 标签种类数、batch_size 等无关，并且大多等于 1。如果网络是多流网络（具有多个输出的分叉网络），请将值设置为输出 Tensor 的数量。
+quantize: 如果设置为 True，则使用Tensorflow的量化功能（https://www.tensorflow.org/performance/quantization）。[默认值: False]
+use_theano: Thaeno 和 Tensorflow 以不同的方式实现卷积。将 Keras 与 Theano 后端一起使用时，顺序设置为 channels_first。此功能未经过完全测试，不适用于量化。[默认值: False]
+input_fld: 保存 keras 权重文件的目录。[默认为当前目录]
+output_fld: 保存 tensorflow 文件的目标目录。[默认为当前目录]
+input_model_file: 输入权重文件的名称。[默认值: model.h5]
+output_model_file: 输出权重文件的名称。[默认值: 输入权重文件的名称 + .pb]
+graph_def: 如果设置为 True ，则将图形定义写为 ascii 文件。[默认值: False]
+output_graphdef_file: 如果 graph_def 设置为 True，则根据传入的名称输出图定义。[默认值: model.ascii]
+output_node_prefix: 用于输出节点的前缀。[默认值: output_node]
+  切换到 Terminal 界面，执行转换文件。
+
+python3 keras_to_tensorflow.py -input_model_file sketcher.h5
+
+
+  切换到 Jupyter 目录树，即可在 QuickDraw 目录下看到生成的 sketcher.h5.pb 文件。
+
+  在以前，手机可以使用 Android TensorFlow 的方式调用 PB 文件执行预测，但 TensorFlow 在未来将弃用该方法，改用 TFLite 的方案。因此，如果想要在 Android 中开发 Quick Draw，需要将 PB 文件转换为 TFLite 文件。
+
+  切换到 jupyter 的界面，在 Codelab 目录下创建名为 transform 的 Python3 文件，复制以下代码到该文件中。
+
+# Converter to lite
+import tensorflow as tf
+graph_def_file = "sketcher.h5.pb"
+input_arrays = ["conv2d_input"]
+output_arrays = ["output_node0"]
+input_shapes = {"conv2d_input" : [1, 28, 28, 1]}
+converter = tf.contrib.lite.TocoConverter.from_frozen_graph(graph_def_file, input_arrays, output_arrays,input_shapes)
+tflite_model = converter.convert()
+open("retrained_graph.tflite", "wb").write(tflite_model)
+  执行该程序，如果没有出现错误提示，即可在同一目录下看到生成名为 retrained_graph.tflite 的 TFLite 格式的模型文件。

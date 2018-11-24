@@ -1,0 +1,21 @@
+什么是 Android Quick Draw ?
+  Quick Draw，这款由谷歌研发的微信小程序，可以看做是 AI 版的 “你画我猜”，玩法很简单，按照提示词进行绘画，只要在 20 秒内 AI 能够识别出画的是什么，就能进入下一关继续挑战。
+
+  很多人因此 “沉迷猜画小歌，不能自拔”，但他们一到没有网络的地方就没法继续 “快乐” 下去。那么，能不能把 Quick Draw 在手机上离线运行呢？
+
+
+
+我们将要创造什么 ?
+  在这个 Codelab 中，你将用使用 Quick Draw Dataset 建立并训练 CNN 模型，将其导出到为静态图文件。创建 Android 单色绘图板程序，使用 Android TensorFlow 执行预测。你将学会
+
+使用 Quick Draw Dataset
+使用 TensorFlow Keras 训练 CNN 模型
+导出 Keras 模型并转换为 PB 静态图文件
+使用 Android OpenCV 开发 Android 单色绘图板
+使用 Android TensorFlow 预测绘制好的图
+你将要需要什么 ?
+BlackWalnut Labs. AI Cloud 访问账号
+Android Studio 3.x
+Android SDK API 21 和 27
+Android NDK
+Android OpenCV SDK
